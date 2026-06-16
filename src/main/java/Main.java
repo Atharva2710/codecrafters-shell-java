@@ -48,6 +48,20 @@ public class Main {
                 }
             } else if (command.equals("pwd")) {
                 System.out.println(currentDirectory);
+            } else if (command.equals("cd")) {
+                if (parts.length > 1) {
+                    String targetDir = parts[1];
+                    File dir = new File(targetDir);
+                    if (dir.exists() && dir.isDirectory()) {
+                        try {
+                            currentDirectory = dir.getCanonicalPath();
+                        } catch (Exception e) {
+                            currentDirectory = dir.getAbsolutePath();
+                        }
+                    } else {
+                        System.out.println("cd: " + targetDir + ": No such file or directory");
+                    }
+                }
             } else {
                 // Determine if the command is an executable in PATH or direct file path
                 String path = null;
@@ -79,7 +93,7 @@ public class Main {
     }
 
     private static boolean isBuiltin(String command) {
-        return command.equals("exit") || command.equals("echo") || command.equals("type") || command.equals("pwd");
+        return command.equals("exit") || command.equals("echo") || command.equals("type") || command.equals("pwd") || command.equals("cd");
     }
 
     // Resolves executable files by searching directories listed in the PATH environment variable
