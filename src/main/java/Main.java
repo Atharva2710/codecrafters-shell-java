@@ -3,6 +3,7 @@ import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) throws Exception {
+        String currentDirectory = System.getProperty("user.dir");
         Scanner scanner = new Scanner(System.in);
         while (true) {
             System.out.print("$ ");
@@ -45,6 +46,8 @@ public class Main {
                         }
                     }
                 }
+            } else if (command.equals("pwd")) {
+                System.out.println(currentDirectory);
             } else {
                 // Determine if the command is an executable in PATH or direct file path
                 String path = null;
@@ -61,6 +64,7 @@ public class Main {
                     try {
                         // Spawn external process with arguments and wait for completion
                         ProcessBuilder pb = new ProcessBuilder(parts);
+                        pb.directory(new File(currentDirectory));
                         pb.inheritIO();
                         Process process = pb.start();
                         process.waitFor();
@@ -75,7 +79,7 @@ public class Main {
     }
 
     private static boolean isBuiltin(String command) {
-        return command.equals("exit") || command.equals("echo") || command.equals("type");
+        return command.equals("exit") || command.equals("echo") || command.equals("type") || command.equals("pwd");
     }
 
     // Resolves executable files by searching directories listed in the PATH environment variable
