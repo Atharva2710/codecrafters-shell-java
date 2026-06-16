@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.Scanner;
 
 public class Main {
@@ -11,13 +12,15 @@ public class Main {
             }
             String[] parts = input.split("\\s+");
             String command = parts[0];
+            
+            // Check and run built-in shell commands
             if (command.equals("exit")) {
                 int exitCode = 0;
                 if (parts.length > 1) {
                     try {
                         exitCode = Integer.parseInt(parts[1]);
                     } catch (NumberFormatException e) {
-                        
+                        // ignore
                     }
                 }
                 System.exit(exitCode);
@@ -33,7 +36,13 @@ public class Main {
                     if (isBuiltin(target)) {
                         System.out.println(target + " is a shell builtin");
                     } else {
-                        System.out.println(target + ": not found");
+                        // Check if command is a valid executable in the system PATH
+                        String path = getPathOfExecutable(target);
+                        if (path != null) {
+                            System.out.println(target + " is " + path);
+                        } else {
+                            System.out.println(target + ": not found");
+                        }
                     }
                 }
             } else {
@@ -44,5 +53,21 @@ public class Main {
 
     private static boolean isBuiltin(String command) {
         return command.equals("exit") || command.equals("echo") || command.equals("type");
+    }
+
+    // Resolves executable files by searching directories listed in the PATH environment variable
+    private static String getPathOfExecutable(String command) {
+        String pathEnv = System.getenv("PATH");
+        if (pathEnv == null) {
+            return null;
+        }
+        String[] directories = pathEnv.split(File.pathSeparator);
+        for (String dir : directories) {
+            File file = new File(dir, command);
+            if (file.exists() && file.isFile() && file.canExecute()) {
+                return file.getAbsolutePath();
+            }
+        }
+        return null;
     }
 }
