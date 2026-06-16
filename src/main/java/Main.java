@@ -27,9 +27,22 @@ public class Main {
                 } else {
                     System.out.println();
                 }
+            } else if (command.equals("type")) {
+                if (parts.length > 1) {
+                    String target = parts[1];
+                    if (isBuiltin(target)) {
+                        System.out.println(target + " is a shell builtin");
+                    } else {
+                        System.out.println(target + ": not found");
+                    }
+                }
             } else {
                 System.out.println(input + ": command not found");
             }
         }
+    }
+
+    private static boolean isBuiltin(String command) {
+        return command.equals("exit") || command.equals("echo") || command.equals("type");
     }
 }
