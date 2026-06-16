@@ -49,18 +49,33 @@ public class Main {
             } else if (command.equals("pwd")) {
                 System.out.println(currentDirectory);
             } else if (command.equals("cd")) {
+                String targetDir = "~";
                 if (parts.length > 1) {
-                    String targetDir = parts[1];
-                    File dir = new File(targetDir);
-                    if (dir.exists() && dir.isDirectory()) {
-                        try {
-                            currentDirectory = dir.getCanonicalPath();
-                        } catch (Exception e) {
-                            currentDirectory = dir.getAbsolutePath();
-                        }
-                    } else {
-                        System.out.println("cd: " + targetDir + ": No such file or directory");
+                    targetDir = parts[1];
+                }
+
+                File dir;
+                if (targetDir.startsWith("/")) {
+                    dir = new File(targetDir);
+                } else if (targetDir.startsWith("~")) {
+                    String home = System.getenv("HOME");
+                    if (home == null) {
+                        home = System.getProperty("user.home");
                     }
+                    String path = targetDir.replaceFirst("^~", home);
+                    dir = new File(path);
+                } else {
+                    dir = new File(currentDirectory, targetDir);
+                }
+
+                if (dir.exists() && dir.isDirectory()) {
+                    try {
+                        currentDirectory = dir.getCanonicalPath();
+                    } catch (Exception e) {
+                        currentDirectory = dir.getAbsolutePath();
+                    }
+                } else {
+                    System.out.println("cd: " + targetDir + ": No such file or directory");
                 }
             } else {
                 // Determine if the command is an executable in PATH or direct file path
