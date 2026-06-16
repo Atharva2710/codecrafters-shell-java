@@ -46,7 +46,30 @@ public class Main {
                     }
                 }
             } else {
-                System.out.println(input + ": command not found");
+                // Determine if the command is an executable in PATH or direct file path
+                String path = null;
+                if (command.contains("/") || command.contains(File.separator)) {
+                    File file = new File(command);
+                    if (file.exists() && file.isFile() && file.canExecute()) {
+                        path = file.getAbsolutePath();
+                    }
+                } else {
+                    path = getPathOfExecutable(command);
+                }
+
+                if (path != null) {
+                    try {
+                        // Spawn external process with arguments and wait for completion
+                        ProcessBuilder pb = new ProcessBuilder(parts);
+                        pb.inheritIO();
+                        Process process = pb.start();
+                        process.waitFor();
+                    } catch (Exception e) {
+                        System.out.println(input + ": command not found");
+                    }
+                } else {
+                    System.out.println(input + ": command not found");
+                }
             }
         }
     }
