@@ -181,6 +181,20 @@ public class Main {
                 if (c == '"') {
                     inDoubleQuotes = false;
                     inArg = true;
+                } else if (c == '\\') {
+                    if (i + 1 < input.length()) {
+                        char nextChar = input.charAt(i + 1);
+                        if (nextChar == '"' || nextChar == '\\' || nextChar == '$' || nextChar == '`') {
+                            currentArg.append(nextChar);
+                            i++; // Skip the escaped character
+                        } else {
+                            currentArg.append('\\');
+                        }
+                        inArg = true;
+                    } else {
+                        currentArg.append('\\');
+                        inArg = true;
+                    }
                 } else {
                     currentArg.append(c);
                     inArg = true;
