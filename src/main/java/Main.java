@@ -158,7 +158,7 @@ public class Main {
         return null;
     }
 
-    // Helper method to parse the command line string, respecting single and double quotes
+    // Helper method to parse the command line string, respecting single/double quotes and backslashes
     private static List<String> parseCommandLine(String input) {
         List<String> args = new ArrayList<>();
         StringBuilder currentArg = new StringBuilder();
@@ -186,7 +186,13 @@ public class Main {
                     inArg = true;
                 }
             } else {
-                if (c == '\'') {
+                if (c == '\\') {
+                    if (i + 1 < input.length()) {
+                        currentArg.append(input.charAt(i + 1));
+                        i++; // Skip the escaped character
+                        inArg = true;
+                    }
+                } else if (c == '\'') {
                     inSingleQuotes = true;
                     inArg = true;
                 } else if (c == '"') {
