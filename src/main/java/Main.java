@@ -1,39 +1,56 @@
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) throws Exception {
+        // Track the current working directory for the Navigation module
         String currentDirectory = System.getProperty("user.dir");
         Scanner scanner = new Scanner(System.in);
+
         while (true) {
             System.out.print("$ ");
             String input = scanner.nextLine().trim();
             if (input.isEmpty()) {
                 continue;
             }
-            String[] parts = input.split("\\s+");
-            String command = parts[0];
-            
-            // Check and run built-in shell commands
+
+            // ==========================================
+            // MODULE: Quoting & Parsing
+            // ==========================================
+            // Parse the command line string, respecting single quotes
+            List<String> parsedArgs = parseCommandLine(input);
+            if (parsedArgs.isEmpty()) {
+                continue;
+            }
+            String command = parsedArgs.get(0);
+
+            // ==========================================
+            // MODULE: Base Shell Stages
+            // ==========================================
+
             if (command.equals("exit")) {
                 int exitCode = 0;
-                if (parts.length > 1) {
+                if (parsedArgs.size() > 1) {
                     try {
-                        exitCode = Integer.parseInt(parts[1]);
+                        exitCode = Integer.parseInt(parsedArgs.get(1));
                     } catch (NumberFormatException e) {
                         // ignore
                     }
                 }
                 System.exit(exitCode);
-            } else if (command.equals("echo")) {
-                if (input.startsWith("echo ")) {
-                    System.out.println(input.substring(5));
-                } else {
-                    System.out.println();
-                }
-            } else if (command.equals("type")) {
-                if (parts.length > 1) {
-                    String target = parts[1];
+            } 
+            
+            else if (command.equals("echo")) {
+                // Echo all parsed arguments separated by a single space
+                List<String> echoArgs = parsedArgs.subList(1, parsedArgs.size());
+                System.out.println(String.join(" ", echoArgs));
+            } 
+            
+            else if (command.equals("type")) {
+                if (parsedArgs.size() > 1) {
+                    String target = parsedArgs.get(1);
                     if (isBuiltin(target)) {
                         System.out.println(target + " is a shell builtin");
                     } else {
@@ -46,12 +63,20 @@ public class Main {
                         }
                     }
                 }
-            } else if (command.equals("pwd")) {
+            } 
+
+            // ==========================================
+            // MODULE: Navigation Extension
+            // ==========================================
+
+            else if (command.equals("pwd")) {
                 System.out.println(currentDirectory);
-            } else if (command.equals("cd")) {
+            } 
+            
+            else if (command.equals("cd")) {
                 String targetDir = "~";
-                if (parts.length > 1) {
-                    targetDir = parts[1];
+                if (parsedArgs.size() > 1) {
+                    targetDir = parsedArgs.get(1);
                 }
 
                 File dir;
@@ -77,7 +102,13 @@ public class Main {
                 } else {
                     System.out.println("cd: " + targetDir + ": No such file or directory");
                 }
-            } else {
+            } 
+
+            // ==========================================
+            // MODULE: Base Shell Stages (External Commands Execution)
+            // ==========================================
+
+            else {
                 // Determine if the command is an executable in PATH or direct file path
                 String path = null;
                 if (command.contains("/") || command.contains(File.separator)) {
@@ -91,8 +122,8 @@ public class Main {
 
                 if (path != null) {
                     try {
-                        // Spawn external process with arguments and wait for completion
-                        ProcessBuilder pb = new ProcessBuilder(parts);
+                        // Spawn external process with arguments and inherit I/O
+                        ProcessBuilder pb = new ProcessBuilder(parsedArgs);
                         pb.directory(new File(currentDirectory));
                         pb.inheritIO();
                         Process process = pb.start();
@@ -111,7 +142,7 @@ public class Main {
         return command.equals("exit") || command.equals("echo") || command.equals("type") || command.equals("pwd") || command.equals("cd");
     }
 
-    // Resolves executable files by searching directories listed in the PATH environment variable
+    // Helper method for resolving system PATH executables
     private static String getPathOfExecutable(String command) {
         String pathEnv = System.getenv("PATH");
         if (pathEnv == null) {
@@ -125,5 +156,45 @@ public class Main {
             }
         }
         return null;
+    }
+
+    // Helper method to parse the command line string, respecting single quotes
+    private static List<String> parseCommandLine(String input) {
+        List<String> args = new ArrayList<>();
+        StringBuilder currentArg = new StringBuilder();
+        boolean inSingleQuotes = false;
+        boolean inArg = false;
+
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+
+            if (inSingleQuotes) {
+                if (c == '\'') {
+                    inSingleQuotes = false;
+                    inArg = true;
+                } else {
+                    currentArg.append(c);
+                    inArg = true;
+                }
+            } else {
+                if (c == '\'') {
+                    inSingleQuotes = true;
+                    inArg = true;
+                } else if (Character.isWhitespace(c)) {
+                    if (inArg) {
+                        args.add(currentArg.toString());
+                        currentArg.setLength(0);
+                        inArg = false;
+                    }
+                } else {
+                    currentArg.append(c);
+                    inArg = true;
+                }
+            }
+        }
+        if (inArg) {
+            args.add(currentArg.toString());
+        }
+        return args;
     }
 }
