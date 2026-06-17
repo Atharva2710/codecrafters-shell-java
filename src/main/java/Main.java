@@ -158,11 +158,12 @@ public class Main {
         return null;
     }
 
-    // Helper method to parse the command line string, respecting single quotes
+    // Helper method to parse the command line string, respecting single and double quotes
     private static List<String> parseCommandLine(String input) {
         List<String> args = new ArrayList<>();
         StringBuilder currentArg = new StringBuilder();
         boolean inSingleQuotes = false;
+        boolean inDoubleQuotes = false;
         boolean inArg = false;
 
         for (int i = 0; i < input.length(); i++) {
@@ -176,9 +177,20 @@ public class Main {
                     currentArg.append(c);
                     inArg = true;
                 }
+            } else if (inDoubleQuotes) {
+                if (c == '"') {
+                    inDoubleQuotes = false;
+                    inArg = true;
+                } else {
+                    currentArg.append(c);
+                    inArg = true;
+                }
             } else {
                 if (c == '\'') {
                     inSingleQuotes = true;
+                    inArg = true;
+                } else if (c == '"') {
+                    inDoubleQuotes = true;
                     inArg = true;
                 } else if (Character.isWhitespace(c)) {
                     if (inArg) {
