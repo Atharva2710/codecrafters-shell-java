@@ -151,7 +151,7 @@ public class Main {
                             if (path != null) {
                                 System.out.println(target + " is " + path);
                             } else {
-                                System.out.println(target + ": not found");
+                                System.err.println(target + ": not found");
                             }
                         }
                     }
@@ -192,7 +192,7 @@ public class Main {
                             currentDirectory = dir.getAbsolutePath();
                         }
                     } else {
-                        System.out.println("cd: " + targetDir + ": No such file or directory");
+                        System.err.println("cd: " + targetDir + ": No such file or directory");
                     }
                 } 
 
@@ -247,12 +247,14 @@ public class Main {
                             Process process = pb.start();
                             process.waitFor();
                         } catch (Exception e) {
-                            System.out.println(input + ": command not found");
+                            System.err.println(command + ": command not found");
                         }
                     } else {
-                        System.out.println(input + ": command not found");
+                        System.err.println(command + ": command not found");
                     }
                 }
+            } catch (Exception e) {
+                System.err.println("shell: " + e.getMessage());
             } finally {
                 // Restore original standard output and error streams
                 if (redirectedOut != null) {
