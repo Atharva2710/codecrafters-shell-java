@@ -198,6 +198,10 @@ public class Main {
                         System.err.println("cd: " + targetDir + ": No such file or directory");
                     }
                 } 
+                
+                else if (command.equals("jobs")) {
+                    // Do nothing (empty implementation for now)
+                } 
 
                 // ==========================================
                 // MODULE: Base Shell Stages (External Commands Execution)
@@ -273,7 +277,7 @@ public class Main {
     }
 
     private static boolean isBuiltin(String command) {
-        return command.equals("exit") || command.equals("echo") || command.equals("type") || command.equals("pwd") || command.equals("cd");
+        return command.equals("exit") || command.equals("echo") || command.equals("type") || command.equals("pwd") || command.equals("cd") || command.equals("jobs");
     }
 
     // Helper method for resolving system PATH executables
