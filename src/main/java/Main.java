@@ -39,7 +39,7 @@ public class Main {
             for (int i = 0; i < parsedArgs.size(); i++) {
                 String arg = parsedArgs.get(i);
                 
-                // Redirect standard output (stdout)
+                // --- Redirection: Standard Output (stdout) ---
                 if (arg.equals(">") || arg.equals("1>")) {
                     if (i + 1 < parsedArgs.size()) {
                         stdoutRedirectFile = parsedArgs.get(i + 1);
@@ -49,7 +49,8 @@ public class Main {
                         i--; // Adjust index after removal
                     }
                 } 
-                // Append standard output (stdout)
+                
+                // --- Redirection: Append Standard Output (stdout >>) ---
                 else if (arg.equals(">>") || arg.equals("1>>")) {
                     if (i + 1 < parsedArgs.size()) {
                         stdoutRedirectFile = parsedArgs.get(i + 1);
@@ -59,7 +60,8 @@ public class Main {
                         i--;
                     }
                 } 
-                // Redirect standard error (stderr)
+                
+                // --- Redirection: Standard Error (stderr 2>) ---
                 else if (arg.equals("2>")) {
                     if (i + 1 < parsedArgs.size()) {
                         stderrRedirectFile = parsedArgs.get(i + 1);
@@ -69,7 +71,8 @@ public class Main {
                         i--;
                     }
                 } 
-                // Append standard error (stderr)
+                
+                // --- Redirection: Append Standard Error (stderr 2>>) ---
                 else if (arg.equals("2>>")) {
                     if (i + 1 < parsedArgs.size()) {
                         stderrRedirectFile = parsedArgs.get(i + 1);
