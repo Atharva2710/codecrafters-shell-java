@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Main {
+    private static int nextJobNumber = 1;
+
     public static void main(String[] args) throws Exception {
         // Track the current working directory for the Navigation module
         String currentDirectory = System.getProperty("user.dir");
@@ -23,6 +25,16 @@ public class Main {
             // ==========================================
             // Parse the command line string, respecting single/double quotes and backslashes
             List<String> parsedArgs = parseCommandLine(input);
+            if (parsedArgs.isEmpty()) {
+                continue;
+            }
+
+            // Check if the command should run in the background (ends with &)
+            boolean runInBackground = false;
+            if (parsedArgs.get(parsedArgs.size() - 1).equals("&")) {
+                runInBackground = true;
+                parsedArgs.remove(parsedArgs.size() - 1);
+            }
             if (parsedArgs.isEmpty()) {
                 continue;
             }
@@ -252,7 +264,12 @@ public class Main {
                             pb.redirectInput(ProcessBuilder.Redirect.INHERIT);
 
                             Process process = pb.start();
-                            process.waitFor();
+                            if (runInBackground) {
+                                System.out.println("[" + nextJobNumber + "] " + process.pid());
+                                nextJobNumber++;
+                            } else {
+                                process.waitFor();
+                            }
                         } catch (Exception e) {
                             System.err.println(command + ": command not found");
                         }
