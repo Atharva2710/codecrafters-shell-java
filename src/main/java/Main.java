@@ -8,6 +8,22 @@ import java.util.Scanner;
 public class Main {
     private static int nextJobNumber = 1;
 
+    private static class Job {
+        int jobNum;
+        long pid;
+        String command;
+        String status;
+
+        public Job(int jobNum, long pid, String command, String status) {
+            this.jobNum = jobNum;
+            this.pid = pid;
+            this.command = command;
+            this.status = status;
+        }
+    }
+
+    private static final List<Job> backgroundJobs = new ArrayList<>();
+
     public static void main(String[] args) throws Exception {
         // Track the current working directory for the Navigation module
         String currentDirectory = System.getProperty("user.dir");
@@ -212,7 +228,17 @@ public class Main {
                 } 
                 
                 else if (command.equals("jobs")) {
-                    // Do nothing (empty implementation for now)
+                    for (int i = 0; i < backgroundJobs.size(); i++) {
+                        Job job = backgroundJobs.get(i);
+                        String marker = " ";
+                        if (i == backgroundJobs.size() - 1) {
+                            marker = "+";
+                        } else if (i == backgroundJobs.size() - 2) {
+                            marker = "-";
+                        }
+                        String formattedStatus = String.format("%-24s", job.status);
+                        System.out.println("[" + job.jobNum + "]" + marker + "  " + formattedStatus + job.command);
+                    }
                 } 
 
                 // ==========================================
@@ -269,6 +295,7 @@ public class Main {
 
                             Process process = pb.start();
                             if (runInBackground) {
+                                backgroundJobs.add(new Job(nextJobNumber, process.pid(), input, "Running"));
                                 System.out.println("[" + nextJobNumber + "] " + process.pid());
                                 nextJobNumber++;
                             } else {
