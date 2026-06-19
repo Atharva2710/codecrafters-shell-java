@@ -13,12 +13,14 @@ public class Main {
         long pid;
         String command;
         String status;
+        Process process;
 
-        public Job(int jobNum, long pid, String command, String status) {
+        public Job(int jobNum, long pid, String command, String status, Process process) {
             this.jobNum = jobNum;
             this.pid = pid;
             this.command = command;
             this.status = status;
+            this.process = process;
         }
     }
 
@@ -228,17 +230,34 @@ public class Main {
                 } 
                 
                 else if (command.equals("jobs")) {
+                    List<Job> toRemove = new ArrayList<>();
                     for (int i = 0; i < backgroundJobs.size(); i++) {
                         Job job = backgroundJobs.get(i);
+                        
+                        // Check if the process exited since the last check
+                        if (job.status.equals("Running") && !job.process.isAlive()) {
+                            job.status = "Done";
+                            toRemove.add(job);
+                        }
+
                         String marker = " ";
                         if (i == backgroundJobs.size() - 1) {
                             marker = "+";
                         } else if (i == backgroundJobs.size() - 2) {
                             marker = "-";
                         }
+
+                        String printCmd = job.command;
+                        if (job.status.equals("Done")) {
+                            if (printCmd.endsWith("&")) {
+                                printCmd = printCmd.substring(0, printCmd.length() - 1).trim();
+                            }
+                        }
+
                         String formattedStatus = String.format("%-24s", job.status);
-                        System.out.println("[" + job.jobNum + "]" + marker + "  " + formattedStatus + job.command);
+                        System.out.println("[" + job.jobNum + "]" + marker + "  " + formattedStatus + printCmd);
                     }
+                    backgroundJobs.removeAll(toRemove);
                 } 
 
                 // ==========================================
@@ -295,7 +314,7 @@ public class Main {
 
                             Process process = pb.start();
                             if (runInBackground) {
-                                backgroundJobs.add(new Job(nextJobNumber, process.pid(), input, "Running"));
+                                backgroundJobs.add(new Job(nextJobNumber, process.pid(), input, "Running", process));
                                 System.out.println("[" + nextJobNumber + "] " + process.pid());
                                 nextJobNumber++;
                             } else {
