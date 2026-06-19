@@ -237,7 +237,9 @@ public class Main {
                             ProcessBuilder pb = new ProcessBuilder(parsedArgs);
                             pb.directory(new File(currentDirectory));
                             
-                            // Apply output redirection to the child process
+                            // Apply output redirection to the child process.
+                            // If no redirection file is specified, the child (including background jobs)
+                            // inherits the parent shell's standard output to print output directly to the terminal.
                             if (stdoutRedirectFile != null) {
                                 File outFile = new File(stdoutRedirectFile);
                                 if (stdoutAppend) {
@@ -249,7 +251,8 @@ public class Main {
                                 pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
                             }
 
-                            // Apply error redirection to the child process
+                            // Apply error redirection to the child process.
+                            // If no redirection file is specified, the child inherits the parent shell's standard error.
                             if (stderrRedirectFile != null) {
                                 File errFile = new File(stderrRedirectFile);
                                 if (stderrAppend) {
@@ -261,6 +264,7 @@ public class Main {
                                 pb.redirectError(ProcessBuilder.Redirect.INHERIT);
                             }
 
+                            // Inherit input stream by default
                             pb.redirectInput(ProcessBuilder.Redirect.INHERIT);
 
                             Process process = pb.start();
