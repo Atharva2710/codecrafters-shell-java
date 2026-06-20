@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Main {
-    private static int nextJobNumber = 1;
 
     private static class Job {
         int jobNum;
@@ -315,9 +314,9 @@ public class Main {
 
                             Process process = pb.start();
                             if (runInBackground) {
-                                backgroundJobs.add(new Job(nextJobNumber, process.pid(), input, "Running", process));
-                                System.out.println("[" + nextJobNumber + "] " + process.pid());
-                                nextJobNumber++;
+                                int jobNum = getNextAvailableJobNumber();
+                                backgroundJobs.add(new Job(jobNum, process.pid(), input, "Running", process));
+                                System.out.println("[" + jobNum + "] " + process.pid());
                             } else {
                                 process.waitFor();
                             }
@@ -371,6 +370,19 @@ public class Main {
             }
         }
         backgroundJobs.removeAll(toRemove);
+    }
+
+    private static int getNextAvailableJobNumber() {
+        if (backgroundJobs.isEmpty()) {
+            return 1;
+        }
+        int max = 0;
+        for (Job job : backgroundJobs) {
+            if (job.jobNum > max) {
+                max = job.jobNum;
+            }
+        }
+        return max + 1;
     }
 
     private static boolean isBuiltin(String command) {
