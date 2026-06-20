@@ -32,6 +32,7 @@ public class Main {
         Scanner scanner = new Scanner(System.in);
 
         while (true) {
+            reapCompletedJobs();
             System.out.print("$ ");
             String input = scanner.nextLine().trim();
             if (input.isEmpty()) {
@@ -341,6 +342,35 @@ public class Main {
                 }
             }
         }
+    }
+
+    private static void reapCompletedJobs() {
+        List<Job> toRemove = new ArrayList<>();
+        for (int i = 0; i < backgroundJobs.size(); i++) {
+            Job job = backgroundJobs.get(i);
+            
+            // Check if the process exited since the last check
+            if (job.status.equals("Running") && !job.process.isAlive()) {
+                job.status = "Done";
+                toRemove.add(job);
+
+                String marker = " ";
+                if (i == backgroundJobs.size() - 1) {
+                    marker = "+";
+                } else if (i == backgroundJobs.size() - 2) {
+                    marker = "-";
+                }
+
+                String printCmd = job.command;
+                if (printCmd.endsWith("&")) {
+                    printCmd = printCmd.substring(0, printCmd.length() - 1).trim();
+                }
+
+                String formattedStatus = String.format("%-24s", job.status);
+                System.out.println("[" + job.jobNum + "]" + marker + "  " + formattedStatus + printCmd);
+            }
+        }
+        backgroundJobs.removeAll(toRemove);
     }
 
     private static boolean isBuiltin(String command) {
