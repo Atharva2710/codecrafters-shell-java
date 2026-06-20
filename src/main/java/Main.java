@@ -266,9 +266,14 @@ public class Main {
                             if (i > 0) {
                                 final InputStream source = prevOutput;
                                 final OutputStream dest = process.getOutputStream();
-                                Thread copyThread = new Thread(() -> {
+                                 Thread copyThread = new Thread(() -> {
                                     try {
-                                        source.transferTo(dest);
+                                        byte[] buffer = new byte[8192];
+                                        int read;
+                                        while ((read = source.read(buffer)) != -1) {
+                                            dest.write(buffer, 0, read);
+                                            dest.flush();
+                                        }
                                     } catch (Exception e) {
                                         // ignore
                                     } finally {
