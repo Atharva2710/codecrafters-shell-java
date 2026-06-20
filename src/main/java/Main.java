@@ -23,6 +23,54 @@ public class Main {
         }
     }
 
+    private static class PipelineStage {
+        List<String> args;
+        String stdoutRedirectFile = null;
+        boolean stdoutAppend = false;
+        String stderrRedirectFile = null;
+        boolean stderrAppend = false;
+
+        public PipelineStage(List<String> parsedArgs) {
+            this.args = new ArrayList<>(parsedArgs);
+            for (int i = 0; i < args.size(); i++) {
+                String arg = args.get(i);
+                if (arg.equals(">") || arg.equals("1>")) {
+                    if (i + 1 < args.size()) {
+                        stdoutRedirectFile = args.get(i + 1);
+                        stdoutAppend = false;
+                        args.remove(i + 1);
+                        args.remove(i);
+                        i--;
+                    }
+                } else if (arg.equals(">>") || arg.equals("1>>")) {
+                    if (i + 1 < args.size()) {
+                        stdoutRedirectFile = args.get(i + 1);
+                        stdoutAppend = true;
+                        args.remove(i + 1);
+                        args.remove(i);
+                        i--;
+                    }
+                } else if (arg.equals("2>")) {
+                    if (i + 1 < args.size()) {
+                        stderrRedirectFile = args.get(i + 1);
+                        stderrAppend = false;
+                        args.remove(i + 1);
+                        args.remove(i);
+                        i--;
+                    }
+                } else if (arg.equals("2>>")) {
+                    if (i + 1 < args.size()) {
+                        stderrRedirectFile = args.get(i + 1);
+                        stderrAppend = true;
+                        args.remove(i + 1);
+                        args.remove(i);
+                        i--;
+                    }
+                }
+            }
+        }
+    }
+
     private static final List<Job> backgroundJobs = new ArrayList<>();
 
     public static void main(String[] args) throws Exception {
@@ -41,13 +89,124 @@ public class Main {
             // ==========================================
             // MODULE: Quoting & Parsing
             // ==========================================
-            // Parse the command line string, respecting single/double quotes and backslashes
-            List<String> parsedArgs = parseCommandLine(input);
+            List<List<String>> commandStages = parsePipeline(input);
+            if (commandStages.isEmpty()) {
+                continue;
+            }
+
+            if (commandStages.size() > 1) {
+                // Execute pipeline
+                List<PipelineStage> stages = new ArrayList<>();
+                boolean runInBackground = false;
+                
+                List<String> lastStageArgs = commandStages.get(commandStages.size() - 1);
+                if (!lastStageArgs.isEmpty() && lastStageArgs.get(lastStageArgs.size() - 1).equals("&")) {
+                    runInBackground = true;
+                    lastStageArgs.remove(lastStageArgs.size() - 1);
+                }
+
+                for (List<String> stageArgs : commandStages) {
+                    if (!stageArgs.isEmpty()) {
+                        stages.add(new PipelineStage(stageArgs));
+                    }
+                }
+
+                if (stages.isEmpty()) {
+                    continue;
+                }
+
+                List<ProcessBuilder> builders = new ArrayList<>();
+                boolean allResolved = true;
+                for (int i = 0; i < stages.size(); i++) {
+                    PipelineStage stage = stages.get(i);
+                    String cmdName = stage.args.get(0);
+                    String resolvedPath = null;
+                    if (cmdName.contains("/") || cmdName.contains(File.separator)) {
+                        File file = new File(cmdName);
+                        if (file.exists() && file.isFile() && file.canExecute()) {
+                            resolvedPath = file.getAbsolutePath();
+                        }
+                    } else {
+                        resolvedPath = getPathOfExecutable(cmdName);
+                    }
+
+                    if (resolvedPath == null) {
+                        System.err.println(cmdName + ": command not found");
+                        allResolved = false;
+                        break;
+                    }
+
+                    stage.args.set(0, resolvedPath);
+
+                    ProcessBuilder pb = new ProcessBuilder(stage.args);
+                    pb.directory(new File(currentDirectory));
+
+                    // Configure redirects
+                    if (stage.stderrRedirectFile != null) {
+                        File file = new File(stage.stderrRedirectFile);
+                        File parent = file.getParentFile();
+                        if (parent != null && !parent.exists()) {
+                            parent.mkdirs();
+                        }
+                        if (stage.stderrAppend) {
+                            pb.redirectError(ProcessBuilder.Redirect.appendTo(file));
+                        } else {
+                            pb.redirectError(ProcessBuilder.Redirect.to(file));
+                        }
+                    } else {
+                        pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+                    }
+
+                    if (i == 0) {
+                        pb.redirectInput(ProcessBuilder.Redirect.INHERIT);
+                    }
+
+                    if (i == stages.size() - 1) {
+                        if (stage.stdoutRedirectFile != null) {
+                            File file = new File(stage.stdoutRedirectFile);
+                            File parent = file.getParentFile();
+                            if (parent != null && !parent.exists()) {
+                                parent.mkdirs();
+                            }
+                            if (stage.stdoutAppend) {
+                                pb.redirectOutput(ProcessBuilder.Redirect.appendTo(file));
+                            } else {
+                                pb.redirectOutput(ProcessBuilder.Redirect.to(file));
+                            }
+                        } else {
+                            pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+                        }
+                    }
+
+                    builders.add(pb);
+                }
+
+                if (allResolved) {
+                    try {
+                        List<Process> processes = ProcessBuilder.startPipeline(builders);
+                        if (runInBackground) {
+                            Process lastProcess = processes.get(processes.size() - 1);
+                            int jobNum = getNextAvailableJobNumber();
+                            backgroundJobs.add(new Job(jobNum, lastProcess.pid(), input, "Running", lastProcess));
+                            System.out.println("[" + jobNum + "] " + lastProcess.pid());
+                        } else {
+                            for (Process p : processes) {
+                                p.waitFor();
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("pipeline error: " + e.getMessage());
+                    }
+                }
+                continue;
+            }
+
+            // Fallback: single command logic
+            List<String> parsedArgs = commandStages.get(0);
             if (parsedArgs.isEmpty()) {
                 continue;
             }
 
-            // Check if the command should run in the background (ends with &)
             boolean runInBackground = false;
             if (parsedArgs.get(parsedArgs.size() - 1).equals("&")) {
                 runInBackground = true;
@@ -477,5 +636,88 @@ public class Main {
             args.add(currentArg.toString());
         }
         return args;
+    }
+
+    private static List<List<String>> parsePipeline(String input) {
+        List<List<String>> commands = new ArrayList<>();
+        List<String> currentCommandArgs = new ArrayList<>();
+        StringBuilder currentArg = new StringBuilder();
+        boolean inSingleQuotes = false;
+        boolean inDoubleQuotes = false;
+        boolean inArg = false;
+
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+
+            if (inSingleQuotes) {
+                if (c == '\'') {
+                    inSingleQuotes = false;
+                    inArg = true;
+                } else {
+                    currentArg.append(c);
+                    inArg = true;
+                }
+            } else if (inDoubleQuotes) {
+                if (c == '"') {
+                    inDoubleQuotes = false;
+                    inArg = true;
+                } else if (c == '\\') {
+                    if (i + 1 < input.length()) {
+                        char nextChar = input.charAt(i + 1);
+                        if (nextChar == '"' || nextChar == '\\' || nextChar == '$' || nextChar == '`') {
+                            currentArg.append(nextChar);
+                            i++; // Skip the escaped character
+                        } else {
+                            currentArg.append('\\');
+                        }
+                        inArg = true;
+                    } else {
+                        currentArg.append('\\');
+                        inArg = true;
+                    }
+                } else {
+                    currentArg.append(c);
+                    inArg = true;
+                }
+            } else {
+                if (c == '\\') {
+                    if (i + 1 < input.length()) {
+                        currentArg.append(input.charAt(i + 1));
+                        i++; // Skip the escaped character
+                        inArg = true;
+                    }
+                } else if (c == '\'') {
+                    inSingleQuotes = true;
+                    inArg = true;
+                } else if (c == '"') {
+                    inDoubleQuotes = true;
+                    inArg = true;
+                } else if (c == '|') {
+                    if (inArg) {
+                        currentCommandArgs.add(currentArg.toString());
+                        currentArg.setLength(0);
+                        inArg = false;
+                    }
+                    commands.add(new ArrayList<>(currentCommandArgs));
+                    currentCommandArgs.clear();
+                } else if (Character.isWhitespace(c)) {
+                    if (inArg) {
+                        currentCommandArgs.add(currentArg.toString());
+                        currentArg.setLength(0);
+                        inArg = false;
+                    }
+                } else {
+                    currentArg.append(c);
+                    inArg = true;
+                }
+            }
+        }
+        if (inArg) {
+            currentCommandArgs.add(currentArg.toString());
+        }
+        if (!currentCommandArgs.isEmpty() || !commands.isEmpty()) {
+            commands.add(currentCommandArgs);
+        }
+        return commands;
     }
 }
